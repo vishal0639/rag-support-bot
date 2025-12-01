@@ -1,0 +1,110 @@
+{
+  "info": {
+    "name": "RAG Support Bot API",
+    "description": "Collection for testing the RAG Support Bot API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["health"]
+        },
+        "description": "Check if the API is healthy and get the count of indexed documents"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Stats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/stats",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["stats"]
+        },
+        "description": "Get statistics about the indexed content"
+      },
+      "response": []
+    },
+    {
+      "name": "Ask Question",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What is this website about?\",\n  \"top_k\": 5\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/ask",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["ask"]
+        },
+        "description": "Ask a question and get an answer based on the indexed content"
+      },
+      "response": []
+    },
+    {
+      "name": "Ask Question - Custom top_k",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"How do I get started?\",\n  \"top_k\": 3\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/ask",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["ask"]
+        },
+        "description": "Ask a question with custom number of context chunks"
+      },
+      "response": []
+    },
+    {
+      "name": "Root",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": [""]
+        },
+        "description": "Get API information"
+      },
+      "response": []
+    }
+  ]
+}
+
