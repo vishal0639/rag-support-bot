@@ -8,7 +8,6 @@ import json
 
 class RAGClient:
     """Simple client for the RAG Support Bot API"""
-    # This client wraps the RAG Support Bot REST API for easy programmatic access
     
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
