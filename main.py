@@ -20,6 +20,21 @@ rag_engine = RAGEngine()
 
 
 # Request/Response Models
+class CrawlRequest(BaseModel):
+    """Request model for crawling a website"""
+    base_url: str = Field(..., description="Base URL to crawl", min_length=1)
+    max_pages: Optional[int] = Field(
+        default=50,
+        description="Maximum number of pages to crawl",
+        ge=1,
+        le=200
+    )
+    reset: Optional[bool] = Field(
+        default=False,
+        description="Reset vector store before crawling"
+    )
+
+
 class QuestionRequest(BaseModel):
     """Request model for asking questions"""
     question: str = Field(..., description="The question to ask", min_length=1)
@@ -45,6 +60,15 @@ class QuestionResponse(BaseModel):
     context_used: int
 
 
+class CrawlResponse(BaseModel):
+    """Crawl response model"""
+    status: str
+    message: str
+    pages_crawled: int
+    chunks_created: int
+    total_chunks_indexed: int
+
+
 class HealthResponse(BaseModel):
     """Health check response"""
     status: str
@@ -60,7 +84,10 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "/health",
+            "crawl": "/crawl (POST)",
             "ask": "/ask (POST)",
+            "regenerate": "/regenerate (POST)",
+            "stats": "/stats",
             "docs": "/docs"
         }
     }
@@ -120,6 +147,136 @@ async def ask_question(request: QuestionRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
+
+
+@app.post("/crawl", response_model=CrawlResponse, tags=["Indexing"])
+async def crawl_website(request: CrawlRequest):
+    """
+    Crawl a website and index its content into the vector database
+    
+    This endpoint will:
+    1. Crawl the specified website (respecting same-domain policy)
+    2. Extract and clean text content from each page
+    3. Chunk the content into manageable pieces
+    4. Generate embeddings for each chunk
+    5. Store everything in the vector database
+    
+    Note: This operation may take several minutes depending on the number of pages.
+    For production use, consider implementing as a background task.
+    """
+    try:
+        from indexer import Indexer
+        
+        print(f"Starting crawl request for: {request.base_url}")
+        
+        # Create indexer with specified parameters
+        indexer = Indexer(
+            target_url=request.base_url,
+            max_pages=request.max_pages
+        )
+        
+        # Reset if requested
+        if request.reset:
+            indexer.vector_store.reset_collection()
+        
+        # Crawl the website
+        pages = indexer.crawler.crawl()
+        
+        if not pages:
+            raise HTTPException(
+                status_code=400,
+                detail="No pages were successfully crawled. Please check the URL."
+            )
+        
+        # Save crawled data
+        indexer.save_crawled_data(pages)
+        
+        # Process and chunk documents
+        chunks = indexer.processor.process_documents(pages)
+        
+        if not chunks:
+            raise HTTPException(
+                status_code=400,
+                detail="No chunks were created from the crawled content."
+            )
+        
+        # Generate embeddings and store
+        indexer.vector_store.add_documents(chunks)
+        
+        # Get final count
+        total_count = indexer.vector_store.get_collection_count()
+        
+        return {
+            "status": "success",
+            "message": f"Successfully crawled and indexed {request.base_url}",
+            "pages_crawled": len(pages),
+            "chunks_created": len(chunks),
+            "total_chunks_indexed": total_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Crawling failed: {str(e)}")
+
+
+@app.post("/regenerate", tags=["Indexing"])
+async def regenerate_embeddings():
+    """
+    Regenerate embeddings from cached crawled data
+    
+    This is useful when:
+    - You want to change the embedding model
+    - You want to adjust chunking parameters
+    - You want to re-index without re-crawling
+    
+    Note: This requires that you have previously run the /crawl endpoint or indexer.py
+    which saves crawled data to crawled_data.json
+    """
+    try:
+        from indexer import Indexer
+        import os
+        
+        # Create indexer
+        indexer = Indexer()
+        
+        # Load cached crawl data
+        if not os.path.exists("crawled_data.json"):
+            raise HTTPException(
+                status_code=400,
+                detail="No cached crawl data found. Please run /crawl endpoint first."
+            )
+        
+        pages = indexer.load_crawled_data()
+        
+        if not pages:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to load cached data."
+            )
+        
+        # Reset vector store
+        indexer.vector_store.reset_collection()
+        
+        # Re-process and re-index
+        chunks = indexer.processor.process_documents(pages)
+        indexer.vector_store.add_documents(chunks)
+        
+        # Get final count
+        total_count = indexer.vector_store.get_collection_count()
+        
+        return {
+            "status": "success",
+            "message": "Embeddings regenerated successfully from cached data",
+            "pages_processed": len(pages),
+            "chunks_created": len(chunks),
+            "total_chunks_indexed": total_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Regeneration failed: {str(e)}")
 
 
 @app.get("/stats", tags=["General"])

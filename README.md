@@ -90,12 +90,34 @@ MAX_PAGES=50
 
 ## Usage
 
-### Step 1: Index the Website
+### Quick Start (Two Options)
 
-Before you can ask questions, you need to crawl and index the target website:
+#### Option A: Using the API (Recommended)
 
+1. **Start the API Server**:
 ```bash
-python indexer.py --reset
+python main.py
+```
+
+2. **Crawl and Index via API**:
+```bash
+curl -X POST "http://localhost:8000/crawl" \
+  -H "Content-Type: application/json" \
+  -d '{"base_url": "https://docs.python.org", "max_pages": 20, "reset": true}'
+```
+
+3. **Ask Questions**:
+```bash
+curl -X POST "http://localhost:8000/ask" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is Python?"}'
+```
+
+#### Option B: Using Command Line
+
+1. **Index the Website**:
+```bash
+python indexer.py --url https://docs.python.org --max-pages 20 --reset
 ```
 
 **Options**:
@@ -104,18 +126,7 @@ python indexer.py --reset
 - `--reset`: Reset vector database before indexing
 - `--use-cached`: Use previously crawled data if available
 
-**Example**:
-```bash
-python indexer.py --url https://docs.python.org --max-pages 20 --reset
-```
-
-This will:
-1. Crawl the website (respecting robots.txt and rate limits)
-2. Clean and chunk the text content
-3. Generate embeddings using OpenAI
-4. Store everything in ChromaDB
-
-### Step 2: Start the API Server
+2. **Start the API Server**
 
 Once indexing is complete, start the FastAPI server:
 
@@ -195,6 +206,36 @@ Health check endpoint
 - Returns service status
 - Shows number of indexed chunks
 
+### `POST /crawl` ✨ NEW
+Crawl and index a website via API
+
+**Request Body**:
+```json
+{
+  "base_url": "https://example.com",
+  "max_pages": 50,  // Optional: default 50
+  "reset": false    // Optional: reset vector store before crawling
+}
+```
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Successfully crawled and indexed https://example.com",
+  "pages_crawled": 45,
+  "chunks_created": 234,
+  "total_chunks_indexed": 234
+}
+```
+
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/crawl" \
+  -H "Content-Type: application/json" \
+  -d '{"base_url": "https://docs.python.org", "max_pages": 20, "reset": true}'
+```
+
 ### `POST /ask`
 Ask a question and get an answer
 
@@ -214,6 +255,32 @@ Ask a question and get an answer
   "sources": [{"title": "string", "url": "string"}],
   "context_used": 0
 }
+```
+
+### `POST /regenerate` ✨ NEW
+Regenerate embeddings from cached crawled data
+
+This is useful when you want to:
+- Change the embedding model
+- Adjust chunking parameters
+- Re-index without re-crawling
+
+**Request Body**: None (uses cached `crawled_data.json`)
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Embeddings regenerated successfully from cached data",
+  "pages_processed": 45,
+  "chunks_created": 234,
+  "total_chunks_indexed": 234
+}
+```
+
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/regenerate"
 ```
 
 ### `GET /stats`
@@ -379,8 +446,54 @@ For a typical website with 50 pages:
   - Retrieval: free (ChromaDB)
   - Answer generation: ~$0.002 per request
 
+## FAQ Generator
+
+Generate a Markdown FAQ document from a list of questions:
+
+### Basic Usage
+```bash
+# Use default example questions
+python generate_faq.py
+
+# Use custom questions from a file
+python generate_faq.py --input my_questions.txt --output my_faq.md
+
+# With custom title
+python generate_faq.py --title "Product FAQ" --output product_faq.md
+```
+
+### Questions File Format
+
+**Text file** (one question per line):
+```
+What is this product?
+How do I get started?
+What are the pricing options?
+```
+
+**JSON file**:
+```json
+["What is this product?", "How do I get started?", "What are the pricing options?"]
+```
+
+### Example
+```bash
+# Create a questions file
+echo "What is Python?" > questions.txt
+echo "How do I install Python?" >> questions.txt
+echo "What are Python's main features?" >> questions.txt
+
+# Generate FAQ
+python generate_faq.py --input questions.txt --output python_faq.md
+```
+
+---
+
 ## Future Enhancements
 
+- [x] **POST /crawl endpoint** - Crawl websites via API ✅
+- [x] **Regenerate embeddings** - Re-index without re-crawling ✅
+- [x] **FAQ Generator** - Generate FAQ documents automatically ✅
 - [ ] Support for PDF documents
 - [ ] Multi-language support
 - [ ] Conversation history/context

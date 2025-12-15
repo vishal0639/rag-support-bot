@@ -1,0 +1,20 @@
+# Example Questions for FAQ Generator
+# Lines starting with # are ignored
+# One question per line
+
+What is this website about?
+How do I get started?
+What are the main features?
+Is there a free trial available?
+How much does it cost?
+What payment methods are accepted?
+Is customer support available?
+What are the system requirements?
+How do I contact support?
+Are there any tutorials or documentation available?
+Can I integrate this with other tools?
+What are the privacy and security features?
+Is there a mobile app?
+How do I cancel my subscription?
+What is the refund policy?
+
